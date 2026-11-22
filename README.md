@@ -4,24 +4,63 @@
 
 ## Запуск
 
-Нужны Python 3.11+, Docker с Linux-контейнерами и ключ провайдера моделей. Создайте `.env` из `.env.example`, задайте `OPENAI_API_KEY`, собственный `LITELLM_MASTER_KEY` с префиксом `sk-` и случайный `DRUN_TOKEN` длиной от 20 символов.
+Нужны Python 3.11+ и Docker с Linux-контейнерами. Чат работает на локальной [Qwen3 8B](https://ollama.com/library/qwen3:8b), а векторная память использует [Qwen3 Embedding 0.6B](https://ollama.com/library/qwen3-embedding:0.6b). Ключ облачного провайдера не нужен. При первом запуске Docker скачает образы, а Ollama — примерно 6 ГБ весов. Веса сохраняются в томе Docker.
 
-```shell
-python -m pip install -r requirements.txt
-docker compose up -d
-docker build -t drun-sandbox sandbox
-python -m drun serve
+Создайте `.env` из `.env.example`, задайте собственный `LITELLM_MASTER_KEY` с префиксом `sk-` и случайный `DRUN_TOKEN` длиной от 20 символов. В конфигурациях от прежней версии можно удалить `OPENAI_API_KEY`, `CHAT_MODEL` и `EMBED_MODEL`. Сохранённые прежней моделью векторы другой размерности пропускаются при поиске. Чтобы факт снова участвовал в поиске, попросите запомнить его заново.
+
+### 1. Подготовьте проект
+
+Откройте PowerShell в корне репозитория. Полная реализация находится в ветке `lab-1/drun-assistant`. Запустите Docker Desktop и дождитесь готовности Linux-контейнеров.
+
+```powershell
+git switch lab-1/drun-assistant
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
 ```
 
-В другом терминале:
+Замените шаблонные значения обоих токенов в `.env` и сохраните файл.
 
-```shell
-python -m drun ask "Покажи дерево рабочей папки"
-python -m drun usage
-python -m drun reminders
+### 2. Запустите шлюз и скачайте модели
+
+Для NVIDIA с Docker Desktop на WSL 2 используйте команды ниже. Для CPU задайте `$composeFiles = @('-f', 'compose.yaml')` и выполните остальные строки блока. Дождитесь завершения каждой команды перед следующей.
+
+```powershell
+$composeFiles = @('-f', 'compose.yaml', '-f', 'compose.gpu.yaml')
+docker compose @composeFiles up -d
+docker compose @composeFiles ps
+docker compose @composeFiles exec -T ollama ollama pull qwen3:8b
+docker compose @composeFiles exec -T ollama ollama pull qwen3-embedding:0.6b
+docker compose @composeFiles exec -T ollama ollama list
+docker build -t drun-sandbox sandbox
+```
+
+В `ps` оба сервиса должны иметь статус `Up`, а `ollama list` должен показать обе модели.
+
+### 3. Запустите и проверьте агента
+
+В первом терминале оставьте сервер запущенным:
+
+```powershell
+.\.venv\Scripts\python.exe -m drun serve
+```
+
+Во втором PowerShell откройте ту же папку и выполните:
+
+```powershell
+.\.venv\Scripts\python.exe -m drun ask "Покажи дерево рабочей папки и прочитай AGENTS.md"
+.\.venv\Scripts\python.exe -m drun ask "Прочитай AGENTS.md через Bash и PowerShell в песочнице и покажи оба результата"
+.\.venv\Scripts\python.exe -m drun usage
 ```
 
 [Дашборд расхода](http://127.0.0.1:8765/dashboard) открывается с HTTP Basic. Имя пользователя произвольное, пароль — `DRUN_TOKEN`. REST API сервера доступен только через loopback. Для другого порта передайте одинаковый `--port` серверу и CLI.
+
+### Если запуск прервался
+
+- При конфликте имени `drun-ollama-1` дождитесь окончания другого запущенного `docker compose up` и проверьте `docker compose @composeFiles ps -a`. Если оба сервиса в статусе `Up`, перейдите к скачиванию моделей. Если Ollama имеет статус `Created` или `Exited`, запустите её через `docker compose @composeFiles start ollama`, затем повторите `up -d`.
+- Если в журнале LiteLLM после замены ключа появляется `No connected db`, пересоздайте только шлюз командой `docker compose @composeFiles up -d --no-deps --force-recreate gateway`. Перезапустите `drun serve`, чтобы он прочитал свежий `.env`.
+- После настройки интеграций в `.env` перезапустите `drun serve`.
 
 ## Интеграции
 

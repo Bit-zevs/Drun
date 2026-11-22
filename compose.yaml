@@ -1,13 +1,24 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_CONTEXT_LENGTH: "16384"
+      OLLAMA_FLASH_ATTENTION: "1"
+      OLLAMA_KV_CACHE_TYPE: q8_0
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - ollama-models:/root/.ollama
   gateway:
     image: ghcr.io/berriai/litellm:main-stable
     environment:
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      CHAT_MODEL: ${CHAT_MODEL:-openai/gpt-4o-mini}
-      EMBED_MODEL: ${EMBED_MODEL:-openai/text-embedding-3-small}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY}
+    depends_on:
+      - ollama
     volumes:
       - ./litellm.yaml:/app/config.yaml:ro
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     ports:
       - "127.0.0.1:4000:4000"
+volumes:
+  ollama-models:

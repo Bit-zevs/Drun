@@ -16,13 +16,13 @@ if (ROOT / ".env").exists():
             os.environ.setdefault(key.strip(), value.strip())
 
 
-def request(url, data=None, headers=None, method=None):
+def request(url, data=None, headers=None, method=None, timeout=45):
     headers = dict(headers or {})
     if data is not None:
         headers.setdefault("Content-Type", "application/json")
         data = json.dumps(data).encode()
     req = urllib.request.Request(url, data, headers, method=method)
-    with urllib.request.urlopen(req, timeout=45) as result:
+    with urllib.request.urlopen(req, timeout=timeout) as result:
         body = result.read(4_000_001)
         if len(body) > 4_000_000:
             raise ValueError("Ответ превышает 4 МБ")
@@ -124,7 +124,7 @@ class Gateway:
         try:
             with span("gateway", model=model, endpoint=endpoint):
                 body, _ = request(f"{self.base}/v1/{endpoint}", {"model": model, **payload},
-                                  {"Authorization": f"Bearer {self.key}"})
+                                  {"Authorization": f"Bearer {self.key}"}, timeout=185)
             result = json.loads(body)
             tokens = int(result.get("usage", {}).get("total_tokens") or reserved)
             status = "ok"

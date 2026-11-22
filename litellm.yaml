@@ -1,11 +1,14 @@
 model_list:
   - model_name: assistant
     litellm_params:
-      model: os.environ/CHAT_MODEL
-      api_key: os.environ/OPENAI_API_KEY
+      model: ollama_chat/qwen3:8b
+      api_base: http://ollama:11434
+      reasoning_effort: none
+      timeout: 180
   - model_name: memory
     litellm_params:
-      model: os.environ/EMBED_MODEL
-      api_key: os.environ/OPENAI_API_KEY
+      model: ollama/qwen3-embedding:0.6b
+      api_base: http://ollama:11434
+      timeout: 180
 general_settings:
   master_key: os.environ/LITELLM_MASTER_KEY
