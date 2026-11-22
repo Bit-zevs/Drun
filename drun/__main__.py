@@ -8,7 +8,7 @@ import os
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 from .agent import Agent
 from .core import ROOT, Store, configure_tracing, event, request, span
@@ -166,7 +166,7 @@ def handler(store, token):
 
 def main():
     parser = argparse.ArgumentParser(prog="drun")
-    parser.add_argument("mode", choices=["serve", "ask", "usage", "reminders"])
+    parser.add_argument("mode", choices=["serve", "ask", "chat", "usage", "reminders"])
     parser.add_argument("prompt", nargs="?")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
@@ -195,15 +195,41 @@ def main():
     if args.mode in {"usage", "reminders"}:
         print(json.dumps(api("/" + args.mode), ensure_ascii=False, indent=2))
         return
+    def ask(prompt):
+        job = api("/jobs", {"prompt": prompt})["id"]
+        while True:
+            status = api(f"/jobs/{job}")
+            if status["status"] in {"done", "error"}:
+                return status
+            time.sleep(0.5)
+
+    if args.mode == "chat":
+        print("Чат Drun. Для выхода введите /exit или нажмите Ctrl+C.")
+        while True:
+            try:
+                prompt = input("Вы> ").strip()
+                if prompt == "/exit":
+                    return
+                if not prompt:
+                    continue
+                if len(prompt) > 12000:
+                    print("Сообщение должно быть не длиннее 12000 символов.")
+                    continue
+                status = ask(prompt)
+                print(f"Drun> {status['result']}\n")
+            except (EOFError, KeyboardInterrupt):
+                print()
+                return
+            except HTTPError as exc:
+                print(f"Сервер вернул HTTP {exc.code}. Проверьте настройки Drun.")
+            except (URLError, TimeoutError):
+                print("Сервер недоступен. Проверьте, запущен ли drun serve.")
+
     if not args.prompt:
         parser.error("Для ask укажите сообщение")
-    job = api("/jobs", {"prompt": args.prompt})["id"]
-    while True:
-        status = api(f"/jobs/{job}")
-        if status["status"] in {"done", "error"}:
-            print(status["result"])
-            return int(status["status"] == "error")
-        time.sleep(0.5)
+    status = ask(args.prompt)
+    print(status["result"])
+    return int(status["status"] == "error")
 
 
 if __name__ == "__main__":
