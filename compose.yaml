@@ -1,0 +1,13 @@
+services:
+  gateway:
+    image: ghcr.io/berriai/litellm:main-stable
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CHAT_MODEL: ${CHAT_MODEL:-openai/gpt-4o-mini}
+      EMBED_MODEL: ${EMBED_MODEL:-openai/text-embedding-3-small}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Set LITELLM_MASTER_KEY}
+    volumes:
+      - ./litellm.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "127.0.0.1:4000:4000"

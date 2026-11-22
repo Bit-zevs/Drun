@@ -1,0 +1,11 @@
+model_list:
+  - model_name: assistant
+    litellm_params:
+      model: os.environ/CHAT_MODEL
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: memory
+    litellm_params:
+      model: os.environ/EMBED_MODEL
+      api_key: os.environ/OPENAI_API_KEY
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

@@ -1,0 +1,8 @@
+.env
+.drun/
+workspace/*
+!workspace/AGENTS.md
+!workspace/.agents/
+__pycache__/
+*.pyc
+.idea/
