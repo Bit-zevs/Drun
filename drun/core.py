@@ -94,7 +94,10 @@ class Store:
 
     def finish(self, job, answer, success):
         with self.db() as db:
-            if success:
+            if success and job["prompt"].strip() == "/new":
+                db.executemany("INSERT OR REPLACE INTO state VALUES(?,?)",
+                               [("summary", ""), ("compact_through", str(job["id"]))])
+            elif success and job["prompt"].strip() not in {"/help", "/start"}:
                 db.execute("INSERT INTO turns VALUES(?,?,?)", (job["id"], job["prompt"], answer))
             db.execute("UPDATE jobs SET status=?,result=? WHERE id=?",
                        ("done" if success else "error", answer, job["id"]))
