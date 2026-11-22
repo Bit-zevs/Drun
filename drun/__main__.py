@@ -8,9 +8,11 @@ import os
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.error import HTTPError
 
 from .agent import Agent
 from .core import ROOT, Store, configure_tracing, event, request, span
+from .telegram_format import messages
 
 
 def worker(store, agent):
@@ -43,8 +45,13 @@ def telegram(store, token, owner):
         return result["result"]
 
     def send(text):
-        for start in range(0, len(text), 2000):
-            api("sendMessage", {"chat_id": owner, "text": text[start:start + 2000]})
+        for formatted, plain in messages(text):
+            try:
+                api("sendMessage", {"chat_id": owner, "text": formatted, "parse_mode": "HTML"})
+            except HTTPError as exc:
+                if exc.code != 400:
+                    raise
+                api("sendMessage", {"chat_id": owner, "text": plain})
 
     while True:
         try:

@@ -64,6 +64,35 @@ docker build -t drun-sandbox sandbox
 
 ## Интеграции
 
+Настройки добавляются в локальный `.env` в корне проекта в формате `ИМЯ=значение`, без внешних кавычек. Храните токены и приватные ссылки в этом файле. После изменений перезапустите `drun serve`.
+
+### Telegram и напоминания
+
+1. Откройте [@BotFather](https://t.me/BotFather), отправьте `/newbot` и запишите выданный токен в `TELEGRAM_TOKEN`.
+2. Остановите `drun serve` через Ctrl+C. Откройте личный чат со своим ботом, нажмите Start и отправьте сообщение.
+3. В PowerShell из корня проекта выполните команду ниже. Она читает токен из `.env` и выводит только идентификаторы личных чатов с необработанными сообщениями.
+
+```powershell
+@'
+import json
+import os
+from drun.core import request
+
+response, _ = request(
+    "https://api.telegram.org/bot" + os.environ["TELEGRAM_TOKEN"] + "/getUpdates",
+    {"allowed_updates": ["message"]},
+)
+for update in json.loads(response)["result"]:
+    chat = update.get("message", {}).get("chat", {})
+    if chat.get("type") == "private":
+        print(chat["id"])
+'@ | .\.venv\Scripts\python.exe -
+```
+
+4. Запишите ID своего чата в `TELEGRAM_CHAT_ID` и запустите `.\.venv\Scripts\python.exe -m drun serve`. В стартовом логе должно появиться `"telegram": true`. Отправьте боту «Покажи дерево рабочей папки», затем «Напомни мне через две минуты проверить Drun». Для доставки напоминания сервер должен оставаться запущенным. Если команда не вывела ID, отправьте боту новое личное сообщение и повторите.
+
+### Остальные настройки
+
 | Возможность | Настройка |
 |---|---|
 | Telegram | `TELEGRAM_TOKEN` и числовой `TELEGRAM_CHAT_ID` личного чата владельца. Запустите бота в Telegram и отправьте сообщение. |
@@ -73,6 +102,10 @@ docker build -t drun-sandbox sandbox
 | Внешний календарь | `EXTERNAL_ICS` с отдельной подпиской iCalendar. Чтение событий за день с учётом повторений и `DRUN_TZ`. |
 | GitHub | Чтение открытых issues по `owner/repo`. Для закрытых репозиториев задайте `GITHUB_TOKEN` с доступом на чтение issues. |
 | MCP | `DRUN_MCP={"example":{"url":"http://127.0.0.1:9000/mcp","headers":{}}}` в одну строку. Поддерживается Streamable HTTP с JSON и конечными SSE-ответами. Серверы подключаются при старте. |
+
+Для Google Calendar откройте настройки нужного календаря и найдите секретный адрес в формате iCal. Можно также указать абсолютный путь к экспортированному файлу, например `PERSONAL_ICS=C:/Users/your-name/calendars/personal.ics`. Для внешнего календаря используйте ссылку или файл расписания в формате ICS. Проверьте запросом «Покажи личный и внешний календарь на завтра».
+
+Для веб-поиска создайте ключ в [Brave Search API](https://api-dashboard.search.brave.com/documentation/guides/authentication). Проверьте условия тарифа перед подключением. Для первой проверки GitHub используйте публичный репозиторий, например «Покажи открытые issues psf/requests». Токен для закрытых репозиториев можно ограничить выбранными репозиториями и разрешением `Issues: read`.
 
 ## Архитектура
 
