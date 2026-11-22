@@ -8,6 +8,17 @@ from .core import Gateway, estimate, event, span
 from .tools import MCP, Workspace, calendar, github, search
 
 
+MEME_STYLE = (
+    "For casual Russian replies, use the vibe of Mellstroy stream memes: punchy reactions, "
+    "cheeky banter, playful exaggeration and occasional profanity. Examples of tone: "
+    "«Ебать, вот это поворот», «Ну всё, приехали», «Ща разберёмся, брат». "
+    "Invent fresh lines and vary the delivery. Swear about the situation, not the person. "
+    "Use humor around the substance of technical answers. Keep commands, filenames, tool "
+    "arguments and factual claims precise. Use a neutral tone for serious or sensitive topics "
+    "and whenever the user asks for one."
+)
+
+
 class Agent:
     def __init__(self, store, workspace):
         self.store = store
@@ -126,6 +137,8 @@ class Agent:
             "Only create reminders or persistent memories when requested.\n"
             f"Workspace instructions: {instructions}\nAvailable skills: {skills}"
         )
+        if os.getenv("DRUN_STYLE", "meme").strip().lower() == "meme":
+            system += "\n\nResponse style:\n" + MEME_STYLE
         recalled = self.recall(prompt)
         messages = [{"role": "system", "content": system},
                     {"role": "user", "content": json.dumps({"summary": summary, "memory": recalled}, ensure_ascii=False)},
